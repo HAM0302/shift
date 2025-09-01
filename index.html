@@ -189,19 +189,38 @@ async function fetchSheet() {
   return data.values || [];
 }
 
-function getShiftIndex(rows, now) {
-  const hour = now.getHours();
-  const shiftStr = `${hour.toString().padStart(2,"0")}:00 ~ ${(hour+1).toString().padStart(2,"0")}:00`;
-  return rows.findIndex(r => (r[0] || "").trim() === shiftStr);
+// 변동 여부 계산
+function getDiff(prev, curr) {
+  const prevSet = new Set(prev.slice(1).filter(Boolean));
+  const currSet = new Set(curr.slice(1).filter(Boolean));
+  const left = [...prevSet].filter(x => !currSet.has(x));
+  const joined = [...currSet].filter(x => !prevSet.has(x));
+  return { left, joined };
 }
 
-function findNextChangeHour(rows, fromIdx) {
+// 현재 시간 이후 변동 있는 시프트 찾기
+function findUpcomingChanges(rows, now) {
+  for (let i = 1; i < rows.length; i++) {
+    const shiftStart = rows[i][0].split("~")[0].trim();
+    const shiftDate = new Date(now);
+    const [h, m] = shiftStart.split(":").map(Number);
+    shiftDate.setHours(h, m || 0, 0, 0);
+
+    if (shiftDate >= now) {
+      const diff = getDiff(rows[i - 1], rows[i]);
+      if (diff.left.length || diff.joined.length) {
+        return { idx: i, time: shiftStart, diff };
+      }
+    }
+  }
+  return null;
+}
+
+// 특정 시점 이후 "다음 변동" 찾기
+function findNextAfter(rows, fromIdx) {
   for (let i = fromIdx + 1; i < rows.length; i++) {
-    const prevSet = new Set(rows[i-1].slice(1).filter(Boolean));
-    const currSet = new Set(rows[i].slice(1).filter(Boolean));
-    const left = [...prevSet].filter(x => !currSet.has(x));
-    const joined = [...currSet].filter(x => !prevSet.has(x));
-    if (left.length || joined.length) {
+    const diff = getDiff(rows[i - 1], rows[i]);
+    if (diff.left.length || diff.joined.length) {
       return rows[i][0].split("~")[0].trim();
     }
   }
@@ -212,60 +231,56 @@ async function update() {
   try {
     const rows = await fetchSheet();
     const now = new Date();
-    const idx = getShiftIndex(rows, now);
 
-    if (idx < 1 || idx >= rows.length) {
-      document.getElementById("shift").innerText = "현재 시프트 없음";
+    const upcoming = findUpcomingChanges(rows, now);
+    if (!upcoming) {
+      document.getElementById("shift").innerText = "📢 다음 시프트 없음";
       document.getElementById("changes").innerText = "";
       document.getElementById("next").innerText = "";
       document.getElementById("blink").innerHTML = "";
       return;
     }
 
-    const prev = rows[idx - 1];
-    const curr = rows[idx];
+    const { idx, time, diff } = upcoming;
 
-    // 변동 인원 계산
-    const prevMembers = new Set(prev.slice(1).filter(Boolean));
-    const currMembers = new Set(curr.slice(1).filter(Boolean));
-    const left = [...prevMembers].filter(x => !currMembers.has(x));
-    const joined = [...currMembers].filter(x => !prevMembers.has(x));
+    // 본문 제목 (정각 + 2분 이후 자동 전환)
+    const [h, m] = time.split(":").map(Number);
+    const shiftStart = new Date(now);
+    shiftStart.setHours(h, m || 0, 0, 0);
+    if (now >= new Date(shiftStart.getTime() + 2 * 60000)) {
+      // 이미 시작 후 2분 지났으면 다음 변동을 기준으로 표시
+      const nextChange = findNextAfter(rows, idx);
+      if (nextChange) {
+        document.getElementById("shift").innerText = `📢 ${nextChange.split(":")[0]}시 시프트 알림`;
+        lastNextHour = findNextAfter(rows, idx + 1)?.split(":")[0] || "";
+      } else {
+        document.getElementById("shift").innerText = "📢 다음 시프트 없음";
+        lastNextHour = "";
+      }
+    } else {
+      document.getElementById("shift").innerText = `📢 ${time.split(":")[0]}시 시프트 알림`;
+      lastNextHour = findNextAfter(rows, idx)?.split(":")[0] || "";
+    }
 
-    if (left.length || joined.length) {
+    // 변동 인원 표시
+    if (diff.left.length || diff.joined.length) {
       let msg = "";
-      if (left.length) msg += `<span class="left">${left.join(", ")}</span>`;
-      if (joined.length) msg += (msg ? "<br>→ " : "→ ") + `<span class="joined">${joined.map(j => "@" + j).join(" ")}</span>`;
+      if (diff.left.length) msg += `<span class="left">${diff.left.join(", ")}</span>`;
+      if (diff.joined.length) msg += (msg ? "<br>→ " : "→ ") + `<span class="joined">${diff.joined.map(j => "@" + j).join(" ")}</span>`;
       document.getElementById("changes").innerHTML = msg;
     } else {
       document.getElementById("changes").innerText = "인원 변동 없음 ✅";
     }
 
-    // 다음 변동 있는 시프트 찾기
-    const nextChange = findNextChangeHour(rows, idx);
-    lastNextHour = nextChange ? nextChange.split(":")[0] : "";
-
-    // 현재 시프트 타이틀 (정각 + 2분 이후에는 다음 변동 시프트로 전환)
-    const [currStart] = curr[0].split("~").map(s => s.trim());
-    if (now.getMinutes() >= 2) {
-      document.getElementById("shift").innerText = nextChange ? `📢 ${nextChange.split(":")[0]}시 시프트 알림` : "📢 다음 시프트 없음";
+    // 🚨 깜빡임 (변동 시프트 시작 10분 전)
+    const alertStart = new Date(shiftStart.getTime() - 10 * 60000);
+    if (now >= alertStart && now < shiftStart) {
+      document.getElementById("blink").innerHTML = `<div class='blink'>🚨 ${h}시 시프트 10분 전 알림! 🚨</div>`;
     } else {
-      document.getElementById("shift").innerText = `📢 ${currStart.split(":")[0]}시 시프트 알림`;
+      document.getElementById("blink").innerHTML = "";
     }
 
-    // 🚨 알림: 변동이 있는 시프트의 10분 전부터 정각 직전까지
-    if (nextChange) {
-      const [nextH, nextM] = nextChange.split(":").map(Number);
-      const nextAlertTime = new Date();
-      nextAlertTime.setHours(nextH, nextM - 10, 0, 0);
-      const diffMin = Math.floor((now - nextAlertTime) / 60000);
-      if (diffMin >= 0 && diffMin < 10) {
-        document.getElementById("blink").innerHTML = `<div class='blink'>🚨 ${nextH}시 시프트 10분 전 알림! 🚨</div>`;
-      } else {
-        document.getElementById("blink").innerHTML = "";
-      }
-    }
-
-    // 다음 변동 안내
+    // 하단 안내
     document.getElementById("next").innerText = lastNextHour ? `🔔 다음 시프트 알림은 ${lastNextHour}시입니다.` : "";
 
     // 업데이트 시간
@@ -281,7 +296,7 @@ async function update() {
 function copyContent() {
   const title = document.getElementById("shift").innerText;
   const roomVal = roomInput.value ? `[${roomInput.value}]` : "[방번호]";
-  const changes = document.getElementById("changes").innerText; // 색상 제거된 순수 텍스트만 복사
+  const changes = document.getElementById("changes").innerText; // 색상 제거된 순수 텍스트
   const infos = Array.from(document.querySelectorAll(".info")).map(e => e.innerText).join("\n");
   const tail = lastNextHour ? `\n\n🔔 다음 시프트 알림은 ${lastNextHour}시입니다.` : "";
 
@@ -295,5 +310,7 @@ update();
 setInterval(update, 60000);
 </script>
 
+
 </body>
 </html>
+
