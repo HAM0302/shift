@@ -76,6 +76,7 @@
     font-size: 15px;
     margin: 12px 0 6px;
     color: #111;
+    line-height: 1.5;
   }
   .info {
     font-size: 14px;
@@ -113,6 +114,10 @@
     text-align: right;
     margin-top: 10px;
   }
+
+  /* 강조 색상 */
+  .left { color: #d9534f; font-weight: bold; }
+  .joined { color: #5cb85c; font-weight: bold; }
 
   /* ✅ 모바일 최적화 */
   @media (max-width: 600px) {
@@ -228,8 +233,8 @@ async function update() {
 
     if (left.length || joined.length) {
       let msg = "";
-      if (left.length) msg += left.join(", ");
-      if (joined.length) msg += (msg ? "<br>→ " : "→ ") + joined.map(j => "@" + j).join(" ");
+      if (left.length) msg += `<span class="left">${left.join(", ")}</span>`;
+      if (joined.length) msg += (msg ? "<br>→ " : "→ ") + `<span class="joined">${joined.map(j => "@" + j).join(" ")}</span>`;
       document.getElementById("changes").innerHTML = msg;
     } else {
       document.getElementById("changes").innerText = "인원 변동 없음 ✅";
@@ -239,11 +244,13 @@ async function update() {
     const nextChange = findNextChangeHour(rows, idx);
     lastNextHour = nextChange ? nextChange.split(":")[0] : "";
 
-    // 현재 시프트 시작 시각
+    // 현재 시프트 타이틀 (정각 + 2분 이후에는 다음 변동 시프트로 전환)
     const [currStart] = curr[0].split("~").map(s => s.trim());
-    const [startH, startM] = currStart.split(":").map(Number);
-    const alertTime = new Date();
-    alertTime.setHours(startH, startM - 10, 0, 0);
+    if (now.getMinutes() >= 2) {
+      document.getElementById("shift").innerText = nextChange ? `📢 ${nextChange.split(":")[0]}시 시프트 알림` : "📢 다음 시프트 없음";
+    } else {
+      document.getElementById("shift").innerText = `📢 ${currStart.split(":")[0]}시 시프트 알림`;
+    }
 
     // 🚨 알림: 변동이 있는 시프트의 10분 전부터 정각 직전까지
     if (nextChange) {
@@ -256,13 +263,6 @@ async function update() {
       } else {
         document.getElementById("blink").innerHTML = "";
       }
-    }
-
-    // 현재 시프트 타이틀 (정각 지나면 다음 변동 시프트 기준)
-    if (now.getMinutes() === 0) {
-      document.getElementById("shift").innerText = nextChange ? `📢 ${nextChange.split(":")[0]}시 시프트 알림` : "📢 다음 시프트 없음";
-    } else {
-      document.getElementById("shift").innerText = `📢 ${currStart.split(":")[0]}시 시프트 알림`;
     }
 
     // 다음 변동 안내
@@ -281,7 +281,7 @@ async function update() {
 function copyContent() {
   const title = document.getElementById("shift").innerText;
   const roomVal = roomInput.value ? `[${roomInput.value}]` : "[방번호]";
-  const changes = document.getElementById("changes").innerText;
+  const changes = document.getElementById("changes").innerText; // 색상 제거된 순수 텍스트만 복사
   const infos = Array.from(document.querySelectorAll(".info")).map(e => e.innerText).join("\n");
   const tail = lastNextHour ? `\n\n🔔 다음 시프트 알림은 ${lastNextHour}시입니다.` : "";
 
@@ -297,5 +297,3 @@ setInterval(update, 60000);
 
 </body>
 </html>
-
-
