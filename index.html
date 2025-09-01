@@ -155,9 +155,8 @@
   <div id="shift" class="changes"></div>
   <div id="changes" class="changes"></div>
 
-  <div class="info">🐹 인원 확인을 위해 55분 전까지 체크(✔) 부탁드립니다.</div>
-  <div class="info">🐹 입장 전 [헬퍼덱, 엔비 선곡, 난이도 선택, 불 설정] 확인해주세요.</div>
-  <div class="info">🐹 빠른 선곡 및 스킵 부탁드리겠습니다.</div>
+  <div class="info">🐹 55분 전까지 체크(✔) 부탁드립니다.</div>
+  <div class="info">🐹 입장 전 [헬퍼덱, 엔비 선곡] 확인해주세요.</div>
   <div class="info">🐹 막판출 알림 시 방번호를 미리 입력 후 대기 부탁드립니다.</div>
 
   <div id="next" class="next-box"></div>
@@ -177,6 +176,7 @@ roomInput.addEventListener("input", () => {
 });
 
 let lastNextHour = "";
+let lastNextTime = null; // 변동이 있는 다음 시프트의 실제 Date
 
 async function fetchSheet() {
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
@@ -229,7 +229,8 @@ async function update() {
     }
 
     // 다음 변동 시프트 찾기 (실제 변동이 있는 시각 기준)
-    let nextHour = "";
+    lastNextTime = null;
+    lastNextHour = "";
     for (let i = idx + 1; i < rows.length; i++) {
       const pm = new Set(rows[i-1].slice(1).filter(Boolean));
       const cm = new Set(rows[i].slice(1).filter(Boolean));
@@ -237,20 +238,25 @@ async function update() {
       const j = [...cm].filter(x => !pm.has(x));
       if (l.length || j.length) {
         const [start] = rows[i][0].split("~").map(s => s.trim());
-        nextHour = start.split(":")[0];
+        lastNextHour = start.split(":")[0];
+        const [h, m] = start.split(":").map(Number);
+        lastNextTime = new Date();
+        lastNextTime.setHours(h, m, 0, 0);
         break;
       }
     }
-    lastNextHour = nextHour;
-    document.getElementById("next").innerText = nextHour ? `🔔 다음 시프트 알림은 ${nextHour}시입니다.` : "";
 
-    // 10분 전 알림
-    const [startH, startM] = currStart.split(":").map(Number);
-    const alertTime = new Date();
-    alertTime.setHours(startH, startM - 10, 0, 0);
-    const diffMin = Math.floor((now - alertTime) / 60000);
-    if (diffMin >= 0 && diffMin <= 10) {
-      document.getElementById("blink").innerHTML = "<div class='blink'>🚨 시프트 10분 전 알림! 🚨</div>";
+    document.getElementById("next").innerText = lastNextHour ? `🔔 다음 시프트 알림은 ${lastNextHour}시입니다.` : "";
+
+    // 10분 전 알림 (다음 변동 시프트 기준)
+    if (lastNextTime) {
+      const alertStart = new Date(lastNextTime.getTime() - 10 * 60000);
+      if (now >= alertStart && now < lastNextTime) {
+        document.getElementById("blink").innerHTML =
+          "<div class='blink'>🚨 시프트 10분 전 알림! 🚨</div>";
+      } else {
+        document.getElementById("blink").innerHTML = "";
+      }
     } else {
       document.getElementById("blink").innerHTML = "";
     }
