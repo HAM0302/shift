@@ -165,8 +165,8 @@
 </div>
 
 <script>
-const API_KEY = "AIzaSyC9w2ze2D8AeF2RVpXOS8h6_yM_bfGs5ok";
-const SHEET_ID = "1Kst1MBWuDNy2HFqA_QQDoFL5f70Zgw586JkTBIpP2Hg";
+const API_KEY = "YOUR_API_KEY";
+const SHEET_ID = "YOUR_SHEET_ID";
 const RANGE = "시트1!A:Z";
 
 const roomInput = document.getElementById("roomInput");
@@ -176,7 +176,6 @@ roomInput.addEventListener("input", () => {
 });
 
 let lastNextHour = "";
-let lastNextTime = null; // 변동이 있는 다음 시프트의 실제 Date
 
 async function fetchSheet() {
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
@@ -189,6 +188,19 @@ function getShiftIndex(rows, now) {
   const hour = now.getHours();
   const shiftStr = `${hour.toString().padStart(2,"0")}:00 ~ ${(hour+1).toString().padStart(2,"0")}:00`;
   return rows.findIndex(r => (r[0] || "").trim() === shiftStr);
+}
+
+function findNextChangeHour(rows, fromIdx) {
+  for (let i = fromIdx + 1; i < rows.length; i++) {
+    const prevSet = new Set(rows[i-1].slice(1).filter(Boolean));
+    const currSet = new Set(rows[i].slice(1).filter(Boolean));
+    const left = [...prevSet].filter(x => !currSet.has(x));
+    const joined = [...currSet].filter(x => !prevSet.has(x));
+    if (left.length || joined.length) {
+      return rows[i][0].split("~")[0].trim();
+    }
+  }
+  return "";
 }
 
 async function update() {
@@ -208,11 +220,6 @@ async function update() {
     const prev = rows[idx - 1];
     const curr = rows[idx];
 
-    // 현재 시프트 제목
-    const [currStart] = curr[0].split("~").map(s => s.trim());
-    const [ch] = currStart.split(":");
-    document.getElementById("shift").innerText = `📢 ${ch}시 시프트 알림`;
-
     // 변동 인원 계산
     const prevMembers = new Set(prev.slice(1).filter(Boolean));
     const currMembers = new Set(curr.slice(1).filter(Boolean));
@@ -221,45 +228,45 @@ async function update() {
 
     if (left.length || joined.length) {
       let msg = "";
-      if (left.length) msg += left.join(", ") + " → ";
-      if (joined.length) msg += joined.map(j => "@" + j).join(" ");
-      document.getElementById("changes").innerText = msg;
+      if (left.length) msg += left.join(", ");
+      if (joined.length) msg += (msg ? "<br>→ " : "→ ") + joined.map(j => "@" + j).join(" ");
+      document.getElementById("changes").innerHTML = msg;
     } else {
       document.getElementById("changes").innerText = "인원 변동 없음 ✅";
     }
 
-    // 다음 변동 시프트 찾기 (실제 변동이 있는 시각 기준)
-    lastNextTime = null;
-    lastNextHour = "";
-    for (let i = idx + 1; i < rows.length; i++) {
-      const pm = new Set(rows[i-1].slice(1).filter(Boolean));
-      const cm = new Set(rows[i].slice(1).filter(Boolean));
-      const l = [...pm].filter(x => !cm.has(x));
-      const j = [...cm].filter(x => !pm.has(x));
-      if (l.length || j.length) {
-        const [start] = rows[i][0].split("~").map(s => s.trim());
-        lastNextHour = start.split(":")[0];
-        const [h, m] = start.split(":").map(Number);
-        lastNextTime = new Date();
-        lastNextTime.setHours(h, m, 0, 0);
-        break;
-      }
-    }
+    // 다음 변동 있는 시프트 찾기
+    const nextChange = findNextChangeHour(rows, idx);
+    lastNextHour = nextChange ? nextChange.split(":")[0] : "";
 
-    document.getElementById("next").innerText = lastNextHour ? `🔔 다음 시프트 알림은 ${lastNextHour}시입니다.` : "";
+    // 현재 시프트 시작 시각
+    const [currStart] = curr[0].split("~").map(s => s.trim());
+    const [startH, startM] = currStart.split(":").map(Number);
+    const alertTime = new Date();
+    alertTime.setHours(startH, startM - 10, 0, 0);
 
-    // 10분 전 알림 (다음 변동 시프트 기준)
-    if (lastNextTime) {
-      const alertStart = new Date(lastNextTime.getTime() - 10 * 60000);
-      if (now >= alertStart && now < lastNextTime) {
-        document.getElementById("blink").innerHTML =
-          "<div class='blink'>🚨 시프트 10분 전 알림! 🚨</div>";
+    // 🚨 알림: 변동이 있는 시프트의 10분 전부터 정각 직전까지
+    if (nextChange) {
+      const [nextH, nextM] = nextChange.split(":").map(Number);
+      const nextAlertTime = new Date();
+      nextAlertTime.setHours(nextH, nextM - 10, 0, 0);
+      const diffMin = Math.floor((now - nextAlertTime) / 60000);
+      if (diffMin >= 0 && diffMin < 10) {
+        document.getElementById("blink").innerHTML = `<div class='blink'>🚨 ${nextH}시 시프트 10분 전 알림! 🚨</div>`;
       } else {
         document.getElementById("blink").innerHTML = "";
       }
-    } else {
-      document.getElementById("blink").innerHTML = "";
     }
+
+    // 현재 시프트 타이틀 (정각 지나면 다음 변동 시프트 기준)
+    if (now.getMinutes() === 0) {
+      document.getElementById("shift").innerText = nextChange ? `📢 ${nextChange.split(":")[0]}시 시프트 알림` : "📢 다음 시프트 없음";
+    } else {
+      document.getElementById("shift").innerText = `📢 ${currStart.split(":")[0]}시 시프트 알림`;
+    }
+
+    // 다음 변동 안내
+    document.getElementById("next").innerText = lastNextHour ? `🔔 다음 시프트 알림은 ${lastNextHour}시입니다.` : "";
 
     // 업데이트 시간
     const timeStr = now.toLocaleString("ko-KR");
