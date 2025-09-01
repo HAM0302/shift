@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>시프트 알림</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body {
+    font-family: "Segoe UI", sans-serif;
+    background: #f5f7fb;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 30px;
+  }
+  .card {
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    padding: 22px;
+    width: 560px;
+    max-width: 100%;
+    position: relative;
+  }
+  .title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .title {
+    font-size: 22px;
+    font-weight: bold;
+    color: #222;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btns {
+    display: flex;
+    gap: 8px;
+  }
+  .btns button {
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    background: #FF6699;
+    color: white;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .btns button:hover { opacity: 0.85; }
+
+  .room-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 15px;
+    color: #333;
+    margin-bottom: 10px;
+  }
+  .room-wrap input {
+    border: 1px solid #aaa;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 15px;
+    width: 90px;
+    text-align: center;
+  }
+
+  .changes {
+    font-size: 15px;
+    margin: 12px 0 6px;
+    color: #111;
+  }
+  .info {
+    font-size: 14px;
+    color: #444;
+    margin: 5px 0;
+    text-align: left;
+  }
+
+  .next-box {
+    background: #ffe1eb;
+    border-left: 6px solid #FF6699;
+    padding: 12px 14px;
+    border-radius: 8px;
+    margin-top: 18px;
+    font-size: 15px;
+    font-weight: bold;
+    color: #222;
+  }
+
+  .blink {
+    background: #d9534f;
+    color: white;
+    text-align: center;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 18px;
+    margin-top: 15px;
+    animation: blinker 1s linear infinite;
+  }
+  @keyframes blinker { 50% { opacity: 0; } }
+
+  .update-time {
+    font-size: 12px;
+    color: #666;
+    text-align: right;
+    margin-top: 10px;
+  }
+
+  /* ✅ 모바일 최적화 */
+  @media (max-width: 600px) {
+    body {
+      padding: 16px;
+    }
+    .card {
+      width: 100%;
+      padding: 16px;
+    }
+    .title {
+      font-size: 20px;
+    }
+    .btns button {
+      padding: 6px 12px;
+      font-size: 13px;
+    }
+    .room-wrap input {
+      width: 70px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="title-row">
+    <div class="title">📢 시프트 알림</div>
+    <div class="btns">
+      <button onclick="update()">새로고침</button>
+      <button onclick="copyContent()">클립보드 복사</button>
+    </div>
+  </div>
+
+  <div class="room-wrap">
+    <span>방번호:</span>
+    <input type="number" id="roomInput" placeholder="0000">
+  </div>
+
+  <div id="shift" class="changes"></div>
+  <div id="changes" class="changes"></div>
+
+  <div class="info">🐹 인원 확인을 위해 55분 전까지 체크(✔) 부탁드립니다.</div>
+  <div class="info">🐹 입장 전 [헬퍼덱, 엔비 선곡, 난이도 선택, 불 설정] 확인해주세요.</div>
+  <div class="info">🐹 빠른 선곡 및 스킵 부탁드리겠습니다.</div>
+  <div class="info">🐹 막판출 알림 시 방번호를 미리 입력 후 대기 부탁드립니다.</div>
+
+  <div id="next" class="next-box"></div>
+  <div id="blink"></div>
+  <div id="updateTime" class="update-time"></div>
+</div>
+
+<script>
+const API_KEY = "AIzaSyC9w2ze2D8AeF2RVpXOS8h6_yM_bfGs5ok";
+const SHEET_ID = "1Kst1MBWuDNy2HFqA_QQDoFL5f70Zgw586JkTBIpP2Hg";
+const RANGE = "시트1!A:Z";
+
+const roomInput = document.getElementById("roomInput");
+roomInput.value = localStorage.getItem("room") || "";
+roomInput.addEventListener("input", () => {
+  localStorage.setItem("room", roomInput.value.trim());
+});
+
+let lastNextHour = "";
+
+async function fetchSheet() {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  return data.values || [];
+}
+
+function getShiftIndex(rows, now) {
+  const hour = now.getHours();
+  const shiftStr = `${hour.toString().padStart(2,"0")}:00 ~ ${(hour+1).toString().padStart(2,"0")}:00`;
+  return rows.findIndex(r => (r[0] || "").trim() === shiftStr);
+}
+
+async function update() {
+  try {
+    const rows = await fetchSheet();
+    const now = new Date();
+    const idx = getShiftIndex(rows, now);
+
+    if (idx < 1 || idx >= rows.length) {
+      document.getElementById("shift").innerText = "현재 시프트 없음";
+      document.getElementById("changes").innerText = "";
+      document.getElementById("next").innerText = "";
+      document.getElementById("blink").innerHTML = "";
+      return;
+    }
+
+    const prev = rows[idx - 1];
+    const curr = rows[idx];
+
+    // 현재 시프트 제목
+    const [currStart] = curr[0].split("~").map(s => s.trim());
+    const [ch] = currStart.split(":");
+    document.getElementById("shift").innerText = `📢 ${ch}시 시프트 알림`;
+
+    // 변동 인원 계산
+    const prevMembers = new Set(prev.slice(1).filter(Boolean));
+    const currMembers = new Set(curr.slice(1).filter(Boolean));
+    const left = [...prevMembers].filter(x => !currMembers.has(x));
+    const joined = [...currMembers].filter(x => !prevMembers.has(x));
+
+    if (left.length || joined.length) {
+      let msg = "";
+      if (left.length) msg += left.join(", ") + " → ";
+      if (joined.length) msg += joined.map(j => "@" + j).join(" ");
+      document.getElementById("changes").innerText = msg;
+    } else {
+      document.getElementById("changes").innerText = "인원 변동 없음 ✅";
+    }
+
+    // 다음 변동 시프트 찾기 (실제 변동이 있는 시각 기준)
+    let nextHour = "";
+    for (let i = idx + 1; i < rows.length; i++) {
+      const pm = new Set(rows[i-1].slice(1).filter(Boolean));
+      const cm = new Set(rows[i].slice(1).filter(Boolean));
+      const l = [...pm].filter(x => !cm.has(x));
+      const j = [...cm].filter(x => !pm.has(x));
+      if (l.length || j.length) {
+        const [start] = rows[i][0].split("~").map(s => s.trim());
+        nextHour = start.split(":")[0];
+        break;
+      }
+    }
+    lastNextHour = nextHour;
+    document.getElementById("next").innerText = nextHour ? `🔔 다음 시프트 알림은 ${nextHour}시입니다.` : "";
+
+    // 10분 전 알림
+    const [startH, startM] = currStart.split(":").map(Number);
+    const alertTime = new Date();
+    alertTime.setHours(startH, startM - 10, 0, 0);
+    const diffMin = Math.floor((now - alertTime) / 60000);
+    if (diffMin >= 0 && diffMin <= 10) {
+      document.getElementById("blink").innerHTML = "<div class='blink'>🚨 시프트 10분 전 알림! 🚨</div>";
+    } else {
+      document.getElementById("blink").innerHTML = "";
+    }
+
+    // 업데이트 시간
+    const timeStr = now.toLocaleString("ko-KR");
+    document.getElementById("updateTime").innerText = `마지막 업데이트: ${timeStr}`;
+
+  } catch (e) {
+    console.error(e);
+    document.getElementById("changes").innerText = "시트 불러오기 실패";
+  }
+}
+
+function copyContent() {
+  const title = document.getElementById("shift").innerText;
+  const roomVal = roomInput.value ? `[${roomInput.value}]` : "[방번호]";
+  const changes = document.getElementById("changes").innerText;
+  const infos = Array.from(document.querySelectorAll(".info")).map(e => e.innerText).join("\n");
+  const tail = lastNextHour ? `\n\n🔔 다음 시프트 알림은 ${lastNextHour}시입니다.` : "";
+
+  const text = `${title}\n${roomVal}\n\n${changes}\n\n${infos}${tail}`;
+  navigator.clipboard.writeText(text).then(() => {
+    alert("복사 완료! 📋");
+  });
+}
+
+update();
+setInterval(update, 60000);
+</script>
+
+</body>
+</html>
