@@ -170,9 +170,7 @@
 </div>
 
 <script>
-const API_KEY = "AIzaSyC9w2ze2D8AeF2RVpXOS8h6_yM_bfGs5ok";
-const SHEET_ID = "1Kst1MBWuDNy2HFqA_QQDoFL5f70Zgw586JkTBIpP2Hg";
-const RANGE = "시트1!!A:Z";
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSb3BXY8D7wBQV7pmBfMPSbHw_wQS_vlspcommpaJSxeZTvOYIA5UqN3owe-yuChKzWMpY8oxCHO54T/pub?gid=0&single=true&output=csv";
 
 const roomInput = document.getElementById("roomInput");
 roomInput.value = localStorage.getItem("room") || "";
@@ -183,10 +181,17 @@ roomInput.addEventListener("input", () => {
 let lastNextHour = "";
 
 async function fetchSheet() {
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${RANGE}?key=${API_KEY}`;
-  const res = await fetch(url);
-  const data = await res.json();
-  return data.values || [];
+
+  const res = await fetch(CSV_URL);
+  const text = await res.text();
+
+  const rows = text
+    .split("\n")
+    .map(r => r.split(",").map(c => c.trim()))
+    .filter(r => r[0] && r[0].includes(":")); // 시간 줄만 남김
+
+  return rows;
+
 }
 
 // 변동 여부 계산
