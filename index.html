@@ -212,6 +212,8 @@ async function fetchSheet() {
     const todayText =
         `${now.getMonth() + 1}월 ${now.getDate()}일`;
 
+    console.log("오늘 날짜:", todayText);
+
     let startIndex = -1;
 
     for (let i = 0; i < allRows.length; i++) {
