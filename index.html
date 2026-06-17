@@ -212,11 +212,6 @@ async function fetchSheet() {
     const todayText =
         `${now.getMonth() + 1}월 ${now.getDate()}일`;
 
-    console.log("오늘 날짜:", todayText);
-
-    console.log(allRows[1]);
-    console.log(allRows[12]);
-
     let startIndex = -1;
 
     for (let i = 0; i < allRows.length; i++) {
@@ -257,9 +252,6 @@ async function fetchSheet() {
 // 변동 여부 계산
 function getDiff(prev, curr) {
 
-    console.log(prev);
-    console.log(curr);
-
     const prevSet = new Set(prev.slice(2).filter(Boolean));
     const currSet = new Set(curr.slice(2).filter(Boolean));
 
@@ -279,8 +271,6 @@ function findUpcomingChanges(rows, now) {
 
     if (shiftDate >= now) {
       const diff = getDiff(rows[i - 1], rows[i]);
-
-      console.log(diff);
       
       if (diff.left.length || diff.joined.length) {
         return { idx: i, time: shiftStart, diff };
