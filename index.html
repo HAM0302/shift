@@ -200,21 +200,52 @@ let lastNextHour = "";
 
 async function fetchSheet() {
 
-  const res = await fetch(CSV_URL);
-  const text = await res.text();
+    const res = await fetch(CSV_URL);
+    const text = await res.text();
 
-  const allRows = text
-  .split("\n")
-  .map(r => r.split(","));
+    const allRows = text
+        .split("\n")
+        .map(r => r.split(",").map(c => c.trim()));
 
-  const rows = text
-    .split("\n")
-    .map(r => r.split(",").map(c => c.trim()))
-    .filter(r => r[0] && r[0].includes(":")); // 시간 줄만 남김
+    const now = new Date();
 
-  console.log(allRows);
-  
-  return rows;
+    const todayText =
+        `${now.getMonth() + 1}월 ${now.getDate()}일`;
+
+    let startIndex = -1;
+
+    for (let i = 0; i < allRows.length; i++) {
+
+        if (
+            allRows[i][2] &&
+            allRows[i][2].includes(todayText)
+        ) {
+            startIndex = i;
+            break;
+        }
+    }
+
+    const todayRows = [];
+
+    for (let i = startIndex + 1; i < allRows.length; i++) {
+
+        const title = allRows[i][2];
+
+        if (
+            title &&
+            title.includes("일차")
+        ) {
+            break;
+        }
+
+        todayRows.push(allRows[i]);
+    }
+
+    const rows = todayRows.filter(
+        r => r[1] && r[1].includes(":")
+    );
+
+    return rows;
 
 }
 
