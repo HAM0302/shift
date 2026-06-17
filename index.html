@@ -266,7 +266,7 @@ function getDiff(prev, curr) {
 // 현재 시간 이후 변동 있는 시프트 찾기
 function findUpcomingChanges(rows, now) {
   for (let i = 1; i < rows.length; i++) {
-    const shiftStart = rows[i][0].split("~")[0].trim();
+    const shiftStart = rows[i][1].split("~")[0].trim();
     const shiftDate = new Date(now);
     const [h, m] = shiftStart.split(":").map(Number);
     shiftDate.setHours(h, m || 0, 0, 0);
@@ -286,7 +286,7 @@ function findNextAfter(rows, fromIdx) {
   for (let i = fromIdx + 1; i < rows.length; i++) {
     const diff = getDiff(rows[i - 1], rows[i]);
     if (diff.left.length || diff.joined.length) {
-      return rows[i][0].split("~")[0].trim();
+      return rows[i][1].split("~")[0].trim();
     }
   }
   return "";
