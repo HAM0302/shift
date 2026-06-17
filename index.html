@@ -379,6 +379,7 @@ async function update() {
   }
 }
 
+ // 복사 결과
 function copyContent() {
   const title =
     document.getElementById("shift").innerText
@@ -388,7 +389,7 @@ function copyContent() {
   const infos = Array.from(document.querySelectorAll(".info")).map(e => e.innerText).join("\n");
   const tail = lastNextHour ? `\n\n🔔 다음 시프트 알림은 ${lastNextHour}시입니다.` : "";
 
-  const text = `${title}\n${roomVal}\n\n${changes}\n\n${infos}${tail}`;
+  const text = `${title}\n\n${roomVal}\n\n${changes}\n\n${infos}${tail}`;
   navigator.clipboard.writeText(text).then(() => {
     alert("📋 복사완료! ");
   });
