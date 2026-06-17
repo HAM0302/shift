@@ -256,6 +256,10 @@ async function fetchSheet() {
 
 // 변동 여부 계산
 function getDiff(prev, curr) {
+
+  console.log(prev);
+  console.log(curr);
+  
   const prevSet = new Set(prev.slice(1).filter(Boolean));
   const currSet = new Set(curr.slice(1).filter(Boolean));
   const left = [...prevSet].filter(x => !currSet.has(x));
