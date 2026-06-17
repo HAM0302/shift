@@ -256,8 +256,8 @@ async function fetchSheet() {
 
 // 변동 여부 계산
 function getDiff(prev, curr) {
-  const prevSet = new Set(prev.slice(1).filter(Boolean));
-  const currSet = new Set(curr.slice(1).filter(Boolean));
+  const prevSet = new Set(prev.slice(2).filter(Boolean));
+  const currSet = new Set(curr.slice(2).filter(Boolean));
   const left = [...prevSet].filter(x => !currSet.has(x));
   const joined = [...currSet].filter(x => !prevSet.has(x));
   return { left, joined };
