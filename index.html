@@ -273,6 +273,9 @@ function findUpcomingChanges(rows, now) {
 
     if (shiftDate >= now) {
       const diff = getDiff(rows[i - 1], rows[i]);
+
+      console.log(diff);
+      
       if (diff.left.length || diff.joined.length) {
         return { idx: i, time: shiftStart, diff };
       }
