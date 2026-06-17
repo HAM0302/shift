@@ -203,11 +203,17 @@ async function fetchSheet() {
   const res = await fetch(CSV_URL);
   const text = await res.text();
 
+  const allRows = text
+  .split("\n")
+  .map(r => r.split(","));
+
   const rows = text
     .split("\n")
     .map(r => r.split(",").map(c => c.trim()))
     .filter(r => r[0] && r[0].includes(":")); // 시간 줄만 남김
 
+  console.log(allRows);
+  
   return rows;
 
 }
@@ -254,6 +260,8 @@ async function update() {
   try {
     const rows = await fetchSheet();
     const now = new Date();
+    const todayText =
+      `${now.getMonth() + 1}월 ${now.getDate()}일`;
 
     const upcoming = findUpcomingChanges(rows, now);
     if (!upcoming) {
