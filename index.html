@@ -163,7 +163,7 @@
 
 <div class="card">
   <div class="title-row">
-    <div class="title">🤜🤛 시프트 알림</div>
+    <div class="title">📢 시프트 알림</div>
     <div class="btns">
       <button onclick="update()">새로고침</button>
       <button onclick="copyContent()">클립보드 복사</button>
@@ -383,7 +383,7 @@ async function update() {
 function copyContent() {
   const title =
     document.getElementById("shift").innerText
-        .replace("📢 ", `📢 ${currentDateText} `);
+        .replace("🤜🤛 ", `🤜🤛 ${currentDateText} `);
   const roomVal = roomInput.value ? `[${roomInput.value}]` : "[방번호]";
   const changes = document.getElementById("changes").innerText; // 색상 제거된 순수 텍스트
   const infos = Array.from(document.querySelectorAll(".info")).map(e => e.innerText).join("\n");
