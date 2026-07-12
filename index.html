@@ -332,14 +332,14 @@ async function update() {
       // 이미 시작 후 2분 지났으면 다음 변동을 기준으로 표시
       const nextChange = findNextAfter(rows, idx);
       if (nextChange) {
-        document.getElementById("shift").innerText = `📢 ${nextChange.split(":")[0]}시 시프트 알림`;
+        document.getElementById("shift").innerText = `🤜🤛 ${nextChange.split(":")[0]}시 시프트 알림`;
         lastNextHour = findNextAfter(rows, idx + 1)?.split(":")[0] || "";
       } else {
-        document.getElementById("shift").innerText = "📢 다음 시프트 없음";
+        document.getElementById("shift").innerText = "🤜🤛 다음 시프트 없음";
         lastNextHour = "";
       }
     } else {
-      document.getElementById("shift").innerText = `📢 ${time.split(":")[0]}시 시프트 알림`;
+      document.getElementById("shift").innerText = `🤜🤛 ${time.split(":")[0]}시 시프트 알림`;
       lastNextHour = findNextAfter(rows, idx)?.split(":")[0] || "";
     }
 
