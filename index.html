@@ -163,7 +163,7 @@
 
 <div class="card">
   <div class="title-row">
-    <div class="title">☕ 시프트 알림</div>
+    <div class="title">🤜🤛 시프트 알림</div>
     <div class="btns">
       <button onclick="update()">새로고침</button>
       <button onclick="copyContent()">클립보드 복사</button>
@@ -178,9 +178,9 @@
   <div id="shift" class="changes"></div>
   <div id="changes" class="changes"></div>
 
-  <div class="info">🐹 자리에 계신분은 체크표시 해주세요. </div>
-  <div class="info">🐹 헬퍼덱 편성 확인해주세요.</div>
-  <div class="info">🐹 재빠른 입장과 난이도 선택 부탁드립니다.</div>
+  <div class="info">👊 확인 후 55분까지 ✔️부탁드립니다. </div>
+  <div class="info">👊 헬퍼덱, 엔비 선곡 확인 부탁드려요.</div>
+  <div class="info">👊 빠른 입장, 선곡, 픽 부탁드립니다.</div>
 
   <div id="next" class="next-box"></div>
   <div id="blink"></div>
@@ -387,9 +387,9 @@ function copyContent() {
   const roomVal = roomInput.value ? `[${roomInput.value}]` : "[방번호]";
   const changes = document.getElementById("changes").innerText; // 색상 제거된 순수 텍스트
   const infos = Array.from(document.querySelectorAll(".info")).map(e => e.innerText).join("\n");
-  const tail = lastNextHour ? `\n\n🔔 다음 시프트 알림은 ${lastNextHour}시입니다.` : "";
+  // const tail = lastNextHour ? `\n\n🔔 다음 시프트 알림은 ${lastNextHour}시입니다.` : "";
 
-  const text = `${title}\n\n${roomVal}\n\n${changes}\n\n${infos}${tail}`;
+  const text = `${title}\n\n${roomVal}\n\n${changes}\n\n${infos}`;
   navigator.clipboard.writeText(text).then(() => {
     alert("📋 복사완료! ");
   });
