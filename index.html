@@ -214,52 +214,59 @@ async function fetchSheet() {
         `${now.getMonth() + 1}월 ${now.getDate()}일`;
 
     currentDateText =
-      `${now.getMonth() + 1}/${now.getDate()}(${["일","월","화","수","목","금","토"][now.getDay()]})`;
+        `${now.getMonth() + 1}/${now.getDate()}(${["일","월","화","수","목","금","토"][now.getDay()]})`;
 
     let startIndex = -1;
 
     for (let i = 0; i < allRows.length; i++) {
 
-      if (
-    allRows[i][2] &&
-    allRows[i][2].includes(todayText)
-) {
-    startIndex = i;
+        if (
+            allRows[i][2] &&
+            allRows[i][2].includes(todayText)
+        ) {
+            startIndex = i;
 
-    const match = allRows[i][2].match(
-        /(\d+)월\s+(\d+)일\s+\((.)\)/
-    );
+            const match = allRows[i][2].match(
+                /(\d+)월\s+(\d+)일\s+\((.)\)/
+            );
 
-    if (match) {
-        currentDateText =
-            `${match[1]}/${match[2]}(${match[3]})`;
+            if (match) {
+                currentDateText =
+                    `${match[1]}/${match[2]}(${match[3]})`;
+            }
+
+            break;
+        }
     }
 
-    break;
-}
-    }
+    const rows = [];
 
-    const Rows = [];
-
-    let foundNextDay = false;
+    let nextDay = false;
 
     for (let i = startIndex + 1; i < allRows.length; i++) {
 
         const title = allRows[i][2];
 
-        // 다음 날짜(2일차)를 만나면 계속 읽되 표시만 해둠
+        // 다음 날짜 시작
         if (title && title.includes("일차")) {
-            foundNextDay = true;
+
+            if (nextDay) break;   // 3일차부터는 종료
+
+            nextDay = true;
             continue;
         }
 
-        // 시간이 있는 행만 추가
         if (allRows[i][1] && allRows[i][1].includes(":")) {
+
             rows.push(allRows[i]);
 
-        // 다음날은 06시까지만 읽고 종료 (필요하면 시간 변경 가능)
-            if (foundNextDay) {
-                const hour = parseInt(allRows[i][1].split(":")[0], 10);
+            // 다음날은 06시까지만 읽기
+            if (nextDay) {
+
+                const hour = parseInt(
+                    allRows[i][1].split(":")[0],
+                    10
+                );
 
                 if (hour >= 6) {
                     break;
@@ -268,7 +275,8 @@ async function fetchSheet() {
         }
     }
 
-return rows;
+    return rows;
+}
 
 // 변동 여부 계산
 function getDiff(prev, curr) {
@@ -290,6 +298,11 @@ function findUpcomingChanges(rows, now) {
     const shiftDate = new Date(now);
     const [h, m] = shiftStart.split(":").map(Number);
     shiftDate.setHours(h, m || 0, 0, 0);
+
+    // 새벽 시간(00~11시)은 다음날로 처리
+    if (h < 12 && now.getHours() >= 12) {
+        shiftDate.setDate(shiftDate.getDate() + 1);
+    }
 
     if (shiftDate >= now) {
       const diff = getDiff(rows[i - 1], rows[i]);
