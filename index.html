@@ -239,29 +239,36 @@ async function fetchSheet() {
 }
     }
 
-    const todayRows = [];
+    const Rows = [];
+
+    let foundNextDay = false;
 
     for (let i = startIndex + 1; i < allRows.length; i++) {
 
         const title = allRows[i][2];
 
-        if (
-            title &&
-            title.includes("일차")
-        ) {
-            break;
+        // 다음 날짜(2일차)를 만나면 계속 읽되 표시만 해둠
+        if (title && title.includes("일차")) {
+            foundNextDay = true;
+            continue;
         }
 
-        todayRows.push(allRows[i]);
+        // 시간이 있는 행만 추가
+        if (allRows[i][1] && allRows[i][1].includes(":")) {
+            rows.push(allRows[i]);
+
+        // 다음날은 06시까지만 읽고 종료 (필요하면 시간 변경 가능)
+            if (foundNextDay) {
+                const hour = parseInt(allRows[i][1].split(":")[0], 10);
+
+                if (hour >= 6) {
+                    break;
+                }
+            }
+        }
     }
 
-    const rows = todayRows.filter(
-        r => r[1] && r[1].includes(":")
-    );
-
-    return rows;
-
-}
+return rows;
 
 // 변동 여부 계산
 function getDiff(prev, curr) {
